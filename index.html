@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Generalized Medical Image Classification</title>
+
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#94a3b8;
+      --accent:#0a76a8;
+      --accent-2:#ed853a;
+      --success:#16a34a;
+      --danger:#ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --card-radius:14px;
+      --gap:18px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background: linear-gradient(180deg, #081024 0%, #081827 100%);
+      color: #e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .container{
+      max-width:1100px;
+      margin:36px auto;
+      padding:24px;
+    }
+
+    header.app-header{
+      display:flex;
+      align-items:flex-start;
+      gap:16px;
+      margin-bottom:20px;
+    }
+    h1{ margin:0; font-size:22px; letter-spacing:0.2px; }
+    p.lead { margin:6px 0 0 0; color:var(--muted); font-size:13px; }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius: var(--card-radius);
+      padding:18px;
+      box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+    }
+
+    form.controls{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .select, .btn, .file-label {
+      height:44px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      color:inherit;
+      padding:0 12px;
+      font-size:14px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    input[type=file]{ display:none; }
+
+    .file-label{ cursor:pointer; }
+
+    /* Predict button: removed gradient, now simple solid accent */
+    .btn {
+      cursor:pointer;
+      padding:0 16px;
+      background: var(--accent);
+      border: none;
+      color: white;
+      font-weight:600;
+      border-radius:10px;
+      box-shadow: 0 8px 20px rgba(7,11,20,0.45);
+    }
+
+    .btn:disabled{
+      opacity:0.5;
+      cursor:not-allowed;
+    }
+
+    .body-grid{
+      margin-top:18px;
+      display:grid;
+      grid-template-columns: 1fr 350px;
+      gap:18px;
+    }
+
+    /* left column: image / overlay + results */
+    .left {
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .image-row {
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:flex-start;
+      flex-wrap:wrap;
+    }
+
+    .img-card {
+      background:var(--glass);
+      border-radius:12px;
+      padding:8px;
+      min-width:180px;
+      max-width:520px;
+      flex:1 1 320px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+
+    /* Equal display box for both images */
+    .image-box {
+      width:100%;
+      height:320px;            /* fixed display height to ensure equal dims */
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#07101b;
+      border-radius:8px;
+      overflow:hidden;
+    }
+
+    .image-box img {
+      width:100%;
+      height:100%;
+      object-fit:contain;      /* preserve aspect ratio, centered */
+      display:block;
+      background:#0a0f18;
+    }
+
+    .meta {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+    }
+
+    .result-badge{
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.02);
+      font-weight:600;
+      color:var(--accent-2);
+    }
+
+    .confidence {
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    /* right column: info & history */
+    .right {
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .info {
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      border-radius:10px;
+      padding:12px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .small {
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    /* Loading overlay */
+    .loading-overlay{
+      position:fixed;
+      inset:0;
+      display:none; /* show on submit with JS */
+      align-items:center;
+      justify-content:center;
+      background: rgba(2,6,23,0.6);
+      z-index:9999;
+    }
+
+    .spinner {
+      width:84px;
+      height:84px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      background: var(--accent);
+      box-shadow: 0 12px 40px rgba(7,11,20,0.6);
+      animation: pop 800ms infinite alternate;
+      color:white;
+      font-weight:700;
+    }
+    @keyframes pop {
+      from { transform: translateY(-4px) scale(0.98); }
+      to   { transform: translateY(0) scale(1); }
+    }
+
+    .spinner:after{
+      content:"";
+      position:absolute;
+      width:42px;height:42px;
+      border-radius:50%;
+      border:4px solid rgba(255,255,255,0.12);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* responsive */
+    @media(max-width:980px){
+      .body-grid{ grid-template-columns: 1fr; }
+      .right{ order:2; }
+      .left{ order:1; }
+      .image-row{ flex-direction:column; }
+      .image-box{ height:260px; }
+    }
+
+    /* Modern custom select appearance */
+    .select-wrap {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    }
+
+    .select-label {
+    font-size:13px;
+    color:var(--muted);
+    margin-right:6px;
+    }
+
+    /* container for select to position arrow */
+    .custom-select {
+    position:relative;
+    min-width:220px;
+    }
+
+    /* The visible select element */
+    .custom-select > select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width:100%;
+    padding:8px 36px 8px 12px;   /* nice inner padding */
+    border-radius:10px;
+    border:2px solid rgba(255,255,255,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+    /* color: #e6eef8;              explicit readable text color */
+    color: var(--accent-2);
+    font-size:16px;
+    font-weight: bolder;
+    outline:none;
+    cursor:pointer;
+    transition: box-shadow 120ms ease, transform 90ms ease;
+    box-shadow: none;
+    }
+
+    /* arrow area (right) */
+    .custom-select .select-arrow {
+    pointer-events:none;
+    position:absolute;
+    right:10px;
+    top:50%;
+    transform:translateY(-50%);
+    color:var(--muted);
+    font-size:14px;
+    }
+
+    /* Hover / focus states for the select */
+    .custom-select > select:hover {
+    box-shadow: 0 6px 16px rgba(7,11,20,0.45);
+    }
+    .custom-select > select:focus {
+    box-shadow: 0 8px 30px rgba(7,11,20,0.55);
+    border-color:var(--accent-2);  /* accent on focus */
+    }
+
+    /* Improve option readability on open (not supported uniformly) */
+    .custom-select > select option {
+    /* color: #0b1220;
+    background: #ffffff; */
+    color: var(--accent-2);
+    background:var(--bg);
+    }
+
+    /* For Internet Explorer / Edge fallback */
+    .custom-select > select::-ms-expand { display: none; }
+
+    /* small responsive tweak */
+    @media (max-width:640px){
+    .custom-select { min-width:160px; }
+    }
+
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <div>
+        <h1>Generalized Medical Image Classification</h1>
+        <p class="lead">Upload an image, choose a model and view prediction + Grad-CAM explanation.</p>
+      </div>
+    </header>
+
+    <div class="card">
+      <form id="predict-form" class="controls" action="/predict" method="post" enctype="multipart/form-data">
+        <!-- nicer select, replace old select label -->
+        <label class="select-wrap" title="Choose model">
+            <div class="select-label">Model</div>
+            <div class="custom-select" role="listbox" aria-label="Choose model">
+                <select name="model_name" id="model-select" aria-required="true">
+                {% for m in models %}
+                    <option value="{{ m }}" {% if selected_model is defined and selected_model == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+                </select>
+                <div class="select-arrow">▾</div>
+            </div>
+        </label>
+
+        <label class="file-label" title="Choose image">
+          <span>Choose image</span>
+          <input id="file-input" type="file" name="file" accept="image/*" />
+        </label>
+
+        <button id="submit-btn" class="btn" type="submit">Predict</button>
+
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+          <div class="small">Tip: JPG/PNG images work best</div>
+        </div>
+      </form>
+
+      <div class="body-grid">
+        <div class="left">
+          <div class="image-row">
+            <div class="img-card" style="flex:1;">
+              <div style="width:100%; text-align:left;">
+                <div class="meta">
+                  <div><strong>Uploaded</strong></div>
+                  {% if result %}
+                    <div class="result-badge">{{ result }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="image-box">
+                {% if file_path %}
+                  <img id="uploaded-img" src="{{ file_path }}" alt="Uploaded image">
+                {% else %}
+                  <div style="color:var(--muted); padding:8px;">No image uploaded yet</div>
+                {% endif %}
+              </div>
+
+              <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                <div class="small">Original image</div>
+                {% if confidence %}
+                  <div class="confidence">Confidence: {{ confidence }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="img-card" style="width:350px; max-width:40%;">
+              <div style="width:100%; text-align:left;">
+                <div class="meta">
+                  <div><strong>Grad-CAM++</strong></div>
+                </div>
+              </div>
+
+              <div class="image-box">
+                {% if overlay_path %}
+                  <img id="overlay-img" src="{{ overlay_path }}" alt="Grad-CAM overlay">
+                {% else %}
+                  <div style="color:var(--muted); padding:8px;">Grad-CAM++ overlay will appear here</div>
+                {% endif %}
+              </div>
+
+              <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                <div class="small">Overlay shows model attention</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>Prediction</strong>
+                <div class="small">Selected model: <code>{{ request.form.get('model_name') or '—' }}</code></div>
+              </div>
+              <div style="text-align:right;">
+                {% if result %}
+                  <div style="font-size:18px;font-weight:700;color:var(--accent-2)">{{ result }}</div>
+                  {% if confidence %}<div class="small">Confidence: {{ confidence }}</div>{% endif %}
+                {% else %}
+                  <div class="small">No prediction yet</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="right">
+          <div class="info card">
+            <div style="font-weight:700;margin-bottom:8px">About</div>
+            <div class="small">This interface runs the selected model and displays Grad-CAM attention. Use centered, close-up images for best results.</div>
+          </div>
+
+          <div class="info card">
+            <div style="font-weight:700;margin-bottom:8px">Status</div>
+            <div class="small">
+              {% if result %}
+                <div>Last prediction: <strong>{{ result }}</strong> — <span class="small">{{ confidence or "" }}</span></div>
+              {% else %}
+                <div>Idle — waiting for upload</div>
+              {% endif %}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading" class="loading-overlay" aria-hidden="true">
+    <div class="spinner">Loading</div>
+  </div>
+
+  <script>
+    (function(){
+      const form = document.getElementById('predict-form');
+      const loading = document.getElementById('loading');
+      const submitBtn = document.getElementById('submit-btn');
+      const fileInput = document.getElementById('file-input');
+
+      // show spinner on submit (form will POST and page reloads on response)
+      form.addEventListener('submit', function(e){
+        if (!fileInput.value) {
+          alert("Please choose an image file before predicting.");
+          e.preventDefault();
+          return;
+        }
+        loading.style.display = 'flex';
+        loading.setAttribute('aria-hidden', 'false');
+        submitBtn.disabled = true;
+      });
+
+      // preview selected file client-side (optional)
+      fileInput.addEventListener('change', function(ev){
+        const f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        const url = URL.createObjectURL(f);
+        const up = document.getElementById('uploaded-img');
+        if (up) up.src = url;
+      });
+
+      // hide spinner when page has loaded (in case of client-side navigation)
+      window.addEventListener('load', function(){
+        loading.style.display = 'none';
+        submitBtn.disabled = false;
+      });
+    })();
+  </script>
+</body>
+</html>
