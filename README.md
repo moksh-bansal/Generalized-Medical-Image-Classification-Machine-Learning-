@@ -1,17 +1,17 @@
 # Generalized-Medical-Image-Classification-Machine-Learning
 
-# File Structure : 
-#  GMIC:
-#  |_  models:
-#  |   |_  Bone Fracture Model
-#  |   |_  Brain MRI Model
-#  |   |_  Chest X-Ray Model
-#  |   |_  Eye Retinal Scan Model
-#  |    
-#  |_  templates:
-#  |   |_ index.html
-#  |
-#  |_  uploads
-#  |
-#  |_  main.py
-#  |_  requirements.txt
+GMIC/
+├── models/
+│   ├── Bone Fracture Model/
+│   ├── Brain MRI Model/
+│   ├── Chest X-Ray Model/
+│   └── Eye Retinal Scan Model/
+│
+├── templates/
+│   └── index.html
+│
+├── uploads/
+│
+├── main.py
+└── requirements.txt
+
